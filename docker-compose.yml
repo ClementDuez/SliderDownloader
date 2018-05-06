@@ -1,0 +1,98 @@
+version: "2"
+
+services:
+    mongodb:
+        image: mongo:latest
+        container_name: "mongodb"
+        environment:
+          - MONGO_DATA_DIR=/data/db
+          - MONGO_LOG_DIR=/dev/null
+        volumes:
+          - ./data/db:/data/db
+        ports:
+            - 27017:27017
+        command: mongod --smallfiles --logpath=/dev/null # --quiet
+    chrome:
+        image: selenium/node-chrome:3.11.0-californium
+        volumes_from:
+            - data
+        volumes:
+          - /dev/shm:/dev/shm
+        depends_on:
+          - hub
+        environment:
+          HUB_HOST: hub
+
+    hub:
+        image: selenium/hub:3.11.0-californium
+        volumes_from:
+            - data
+        ports:
+          - "4444:4444"
+    data:
+        image: busybox
+        volumes:
+            - .:/var/www/html
+    tools:
+        build: docker/tools
+        depends_on:
+            - hub
+            - mongodb
+#            - elasticsearch
+#            - mailcatcher
+#            - varnish
+#            - redis
+        volumes:
+            - $SSH_AUTH_SOCK:/tmp/agent.sock
+            - ~/.gitconfig:/var/www/.gitconfig
+            - ~/.ssh/known_hosts:/var/www/.ssh/known_hosts
+            - ~/.composer:/var/www/.composer
+            - ./data/.bash_history:/var/www/.bash_history
+        environment:
+            - SSH_AUTH_SOCK=/tmp/agent.sock
+            - PHP_IDE_CONFIG=serverName=sliderkz
+        volumes_from:
+            - data
+        env_file:
+#            - docker/settings/env
+            - docker/settings/env_access
+#            - docker/settings/mysql
+
+#    mailcatcher:
+#        image: schickling/mailcatcher
+#        env_file:
+#            - docker/settings/env
+#        ports:
+#            - 1080:1080
+#
+#    elasticsearch:
+#        build: docker/elastic
+#        environment:
+#            - xpack.security.enabled=false
+#            - cluster.name=aif-cluster
+#            - bootstrap.memory_lock=true
+#            - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+#        volumes:
+#            - ./data/elasticsearch:/usr/share/elasticsearch/data
+#        ports:
+#            - 9200:9200
+#
+#    redis:
+#        image: redis:alpine
+#        expose:
+#            - 6379
+#
+#    varnish:
+#        build: ./docker/varnish/
+#        environment:
+#            VARNISH_PORT: 8081
+#            VARNISH_MEMORY: 200M
+#        ports:
+#            - 81:8081
+#
+#    phpmyadmin:
+#        image: phpmyadmin/phpmyadmin
+#        ports:
+#            - 8080:80
+#        links:
+#            - db
